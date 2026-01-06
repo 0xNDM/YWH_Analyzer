@@ -163,9 +163,12 @@ def fetch_metadata(video_ids, watch_times=None):
     return results
 
 
-def run(watch_file):
-    with open(watch_file, "r", encoding="utf-8") as f:
-        history = json.load(f)
+def run(watch_data):
+    if isinstance(watch_data, str) and os.path.exists(watch_data):
+        with open(watch_data, "r", encoding="utf-8") as f:
+            history = json.load(f)
+    else:
+        history = watch_data
 
     history_2025 = [e for e in history if entry_year(e) == 2025]
 
