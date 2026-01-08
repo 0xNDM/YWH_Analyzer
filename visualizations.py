@@ -51,7 +51,7 @@ def create_charts(df):
         go.Indicator(
             mode="number",
             value=total_watch_hours,
-            number={"suffix": " hrs", "valueformat": ".1f", "font": {"size": 44}},
+            number={"suffix": " hrs", "valueformat": ".1f", "font": {"size": 50}},
             title={"text": "Total Watch Hours", "font": {"size": 16}},
         ),
         row=1,
@@ -61,7 +61,7 @@ def create_charts(df):
         go.Indicator(
             mode="number",
             value=total_video_count,
-            number={"valueformat": ",.0f", "font": {"size": 44}},
+            number={"valueformat": ",.0f", "font": {"size": 50}},
             title={"text": "Total Videos", "font": {"size": 16}},
         ),
         row=1,
@@ -74,7 +74,7 @@ def create_charts(df):
             number={
                 "suffix": f" hrs {daily_avg_minutes} min",
                 "valueformat": "d",
-                "font": {"size": 48},
+                "font": {"size": 50},
             },
             title={"text": "Daily Average", "font": {"size": 16}},
         ),

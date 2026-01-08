@@ -1,7 +1,7 @@
 *.csv
 *.json
+*.ipynb
 .env
 .vscode/
 __pycache__/
 main.py
-visuals.ipynb

@@ -73,7 +73,7 @@ def _prepare_metadata_in_memory(
 
 def run_pipeline(history: List[dict]) -> pd.DataFrame:
     """Run the full pipeline in memory and return final_df."""
-    step2 = load_step("step2", "2_merged_data_to_csv.py")
+    step2 = load_step("step2", "2_merged_data.py")
     step3 = load_step("step3", "3_deduplicate.py")
     step4 = load_step("step4", "4_remove_live.py")
     step5 = load_step("step5", "5_remove_unavailable.py")

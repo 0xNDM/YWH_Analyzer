@@ -11,8 +11,6 @@ import requests
 from dotenv import load_dotenv
 
 
-CACHE_FILE = "youtube_video_cache_full.json"
-
 load_dotenv()
 API_KEYS = [
     key
@@ -45,18 +43,6 @@ def iso8601_to_seconds(duration):
     s = int(match.group(3) or 0)
 
     return h * 3600 + m * 60 + s
-
-
-def load_cache():
-    if Path(CACHE_FILE).exists():
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return {v["video_id"]: v for v in json.load(f)}
-    return {}
-
-
-def save_cache(cache):
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(list(cache.values()), f, indent=2)
 
 
 def iso_to_mysql(ts):
@@ -188,7 +174,7 @@ def run(watch_data):
                 "watched_at_sql": iso_to_mysql(iso_time),
             }
 
-    cache = load_cache()
+    cache = {}
     missing = [vid for vid in video_ids if vid not in cache]
 
     if missing:
@@ -211,7 +197,5 @@ def run(watch_data):
                 snippet.pop("publishedAt", None)
             elif "publishedAt_sql" not in snippet:
                 snippet["publishedAt_sql"] = ""
-
-    save_cache(cache)
 
     return history_2025, list(cache.values())
