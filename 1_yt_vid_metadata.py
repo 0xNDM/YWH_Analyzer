@@ -2,18 +2,17 @@
 Use youtube data API v3 to get metadata for the videos in watdh history
 """
 
-from pathlib import Path
 from datetime import datetime, timezone
 import os
 import re
+import hashlib
 import json
 import requests
-import hashlib
 from dotenv import load_dotenv
 
 
 load_dotenv()
-KEY_STATE_FILE = "api_key_status.json"
+KEY_STATE_FILE = os.getenv("YT_KEY_STATE_PATH", "api_key_status.json")
 
 
 def get_working_keys():
@@ -21,14 +20,14 @@ def get_working_keys():
         val for key, val in os.environ.items() if key.startswith("YT_API_") and val
     ]
     if not items:
-        raise RuntimeError("No YT_API keys found in .env file")
+        raise RuntimeError("No YT_API keys found in environment variables")
 
     state = {}
     if os.path.exists(KEY_STATE_FILE):
         try:
-            with open(KEY_STATE_FILE, "r") as f:
+            with open(KEY_STATE_FILE, "r", encoding="utf-8") as f:
                 state = json.load(f)
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             pass
 
     today = datetime.now().strftime("%Y-%m-%d")
@@ -47,13 +46,13 @@ def mark_key_exhausted(key):
     state = {}
     if os.path.exists(KEY_STATE_FILE):
         try:
-            with open(KEY_STATE_FILE, "r") as f:
+            with open(KEY_STATE_FILE, "r", encoding="utf-8") as f:
                 state = json.load(f)
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             pass
 
     state[k_hash] = today
-    with open(KEY_STATE_FILE, "w") as f:
+    with open(KEY_STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f)
 
 
@@ -85,7 +84,7 @@ def iso_to_mysql(ts):
     try:
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
+    except ValueError:
         return ""
 
 
