@@ -8,23 +8,53 @@ import os
 import re
 import json
 import requests
+import hashlib
 from dotenv import load_dotenv
 
 
 load_dotenv()
-API_KEYS = [
-    key
-    for key in (
-        os.getenv("YT_API_1"),
-        os.getenv("YT_API_2"),
-        os.getenv("YT_API_3"),
-        os.getenv("YT_API_4"),
-    )
-    if key
-]
+KEY_STATE_FILE = "api_key_status.json"
 
-if not API_KEYS:
-    raise RuntimeError("No YT_API keys found in .env file")
+
+def get_working_keys():
+    items = [
+        val for key, val in os.environ.items() if key.startswith("YT_API_") and val
+    ]
+    if not items:
+        raise RuntimeError("No YT_API keys found in .env file")
+
+    state = {}
+    if os.path.exists(KEY_STATE_FILE):
+        try:
+            with open(KEY_STATE_FILE, "r") as f:
+                state = json.load(f)
+        except Exception:
+            pass
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    valid = []
+    for k in items:
+        k_hash = hashlib.sha256(k.encode()).hexdigest()
+        if state.get(k_hash) != today:
+            valid.append(k)
+    return valid
+
+
+def mark_key_exhausted(key):
+    k_hash = hashlib.sha256(key.encode()).hexdigest()
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    state = {}
+    if os.path.exists(KEY_STATE_FILE):
+        try:
+            with open(KEY_STATE_FILE, "r") as f:
+                state = json.load(f)
+        except Exception:
+            pass
+
+    state[k_hash] = today
+    with open(KEY_STATE_FILE, "w") as f:
+        json.dump(state, f)
 
 
 def iso8601_to_seconds(duration):
@@ -81,7 +111,14 @@ def fetch_metadata(video_ids, watch_times=None):
     results = {}
     batch = []
 
+    current_keys = get_working_keys()
+    if not current_keys:
+        raise RuntimeError(
+            "All configured API keys are exhausted for today or missing."
+        )
+
     def query(ids):
+        nonlocal current_keys
         url = "https://www.googleapis.com/youtube/v3/videos"
         params = {
             "id": ",".join(ids),
@@ -89,30 +126,37 @@ def fetch_metadata(video_ids, watch_times=None):
         }
 
         last_err = None
+        response_json = None
+        idx = 0
 
-        for idx, key in enumerate(API_KEYS):
+        while idx < len(current_keys):
+            key = current_keys[idx]
             params["key"] = key
 
             try:
                 r = requests.get(url, params=params, timeout=30)
 
-                quota_hit = r.status_code in (403, 429)
-                if quota_hit and idx + 1 < len(API_KEYS):
+                if r.status_code in (403, 429):
+                    mark_key_exhausted(key)
+                    current_keys.pop(idx)
+                    # Do not increment idx, next key slides in
                     continue
 
                 r.raise_for_status()
+                response_json = r.json()
                 break
+
             except requests.RequestException as exc:
                 last_err = exc
-                if idx + 1 < len(API_KEYS):
-                    continue
-                raise
+                idx += 1  # Try next available key
+                continue
 
-        if last_err:
-            # All keys failed; surface the last error
-            raise last_err
+        if response_json is None:
+            if last_err:
+                raise last_err
+            raise RuntimeError("All keys failed or exhausted.")
 
-        for item in r.json().get("items", []):
+        for item in response_json.get("items", []):
             results[item["id"]] = {
                 "video_id": item["id"],
                 "fetched_at": datetime.now(timezone.utc).isoformat(),

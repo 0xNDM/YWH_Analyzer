@@ -63,32 +63,33 @@ if uploaded_file is not None:
             status_text.text(
                 "[1/8] Fetching metadata and filtering watch history (2025)..."
             )
+            progress_bar.progress(40)
             history_2025, cache_list = step1.run(data)
-            progress_bar.progress(12)
+            progress_bar.progress(50)
 
             status_text.text("[2/8] Merging watch history with metadata...")
             df = step2.run(history_2025, cache_list)
-            progress_bar.progress(25)
+            progress_bar.progress(57)
 
             status_text.text("[3/8] Deduplicating non-music videos...")
             df = step3.run(df)
-            progress_bar.progress(37)
+            progress_bar.progress(64)
 
             status_text.text("[4/8] Removing live streams...")
             df = step4.run(df)
-            progress_bar.progress(50)
+            progress_bar.progress(71)
 
             status_text.text("[5/8] Removing unavailable/deleted videos...")
             df = step5.run(df)
-            progress_bar.progress(62)
+            progress_bar.progress(78)
 
             status_text.text("[6/8] Capping long videos and sorting...")
             df = step6.run(df)
-            progress_bar.progress(75)
+            progress_bar.progress(85)
 
             status_text.text("[7/8] Flooring timestamps...")
             df = step7.run(df)
-            progress_bar.progress(87)
+            progress_bar.progress(92)
 
             status_text.text("[8/8] Finishing touches...")
             df = step8.run(df)
