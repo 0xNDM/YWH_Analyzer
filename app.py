@@ -1,9 +1,22 @@
 import streamlit as st
 import json
 import pandas as pd
+import time
+import uuid
+import threading
 from pipeline import load_step
 import visualizations
 import streamlit.components.v1 as components
+
+# Queue Management
+@st.cache_resource
+def get_queue():
+    return {
+        "queue": [],
+        "lock": threading.Lock()
+    }
+
+queue_state = get_queue()
 
 # Page Config
 st.set_page_config(
@@ -92,68 +105,110 @@ if uploaded_file is not None:
             "processed_data" not in st.session_state
             or st.session_state.get("file_name") != uploaded_file.name
         ):
-            st.text("uploading file visual")
-            # Load Steps dynamically using the existing pipeline helper
-            step1 = load_step("step1", "1_yt_vid_metadata.py")
-            step2 = load_step("step2", "2_merged_data.py")
-            step3 = load_step("step3", "3_deduplicate.py")
-            step4 = load_step("step4", "4_remove_live.py")
-            step5 = load_step("step5", "5_remove_unavailable.py")
-            step6 = load_step("step6", "6_remove_videos.py")
-            step7 = load_step("step7", "7_to_the_hour.py")
-            step8 = load_step("step8", "8_the_finishing.py")
+            # Read JSON immediately to confirm upload
+            upload_status = st.empty()
+            with upload_status.container():
+                st.text("File uploaded. Parsing JSON...")
+                data = json.load(uploaded_file)
+                st.text("JSON parsed. Waiting for analysis slot...")
 
-            # Read JSON
-            data = json.load(uploaded_file)
+            # ---------------- QUEUE LOGIC ----------------
+            if "request_id" not in st.session_state:
+                st.session_state["request_id"] = str(uuid.uuid4())
+            
+            req_id = st.session_state["request_id"]
+            
+            # Add to queue if not present
+            with queue_state["lock"]:
+                if req_id not in queue_state["queue"]:
+                    queue_state["queue"].append(req_id)
+            
+            queue_placeholder = st.empty()
+            
+            try:
+                while True:
+                    with queue_state["lock"]:
+                        try:
+                            position = queue_state["queue"].index(req_id)
+                        except ValueError:
+                            queue_state["queue"].append(req_id)
+                            position = len(queue_state["queue"]) - 1
 
-            # Progress Bar
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+                    if position == 0:
+                        queue_placeholder.empty()
+                        break
+                    else:
+                        queue_placeholder.warning(f"⚠️ Analysis server busy. JSON loaded. You are in queue position {position} for processing.")
+                        time.sleep(2)
 
-            # Run Pipeline
-            status_text.text(
-                "[1/8] Fetching metadata and filtering watch history (2025)..."
-            )
-            progress_bar.progress(40)
-            history_2025, cache_list = step1.run(data)
+                upload_status.text("Starting analysis...")
+                # Load Steps dynamically using the existing pipeline helper
+                step1 = load_step("step1", "1_yt_vid_metadata.py")
 
-            if not history_2025:
-                status_text.empty()
-                progress_bar.empty()
-                st.error("Your json file didn't have 2025 data.")
-                st.stop()
+                step2 = load_step("step2", "2_merged_data.py")
+                step3 = load_step("step3", "3_deduplicate.py")
+                step4 = load_step("step4", "4_remove_live.py")
+                step5 = load_step("step5", "5_remove_unavailable.py")
+                step6 = load_step("step6", "6_remove_videos.py")
+                step7 = load_step("step7", "7_to_the_hour.py")
+                step8 = load_step("step8", "8_the_finishing.py")
 
-            progress_bar.progress(50)
+                # Progress Bar
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
-            status_text.text("[2/8] Merging watch history with metadata...")
-            df = step2.run(history_2025, cache_list)
-            progress_bar.progress(57)
+                # Run Pipeline
+                status_text.text(
+                    "[1/8] Fetching metadata and filtering watch history (2025)..."
+                )
+                progress_bar.progress(40)
+                history_2025, cache_list = step1.run(data)
 
-            status_text.text("[3/8] Deduplicating non-music videos...")
-            df = step3.run(df)
-            progress_bar.progress(64)
+                if not history_2025:
+                    status_text.empty()
+                    progress_bar.empty()
+                    st.error("Your json file didn't have 2025 data.")
+                    # Handle queue removal before stopping
+                    with queue_state["lock"]:
+                         if req_id in queue_state["queue"]:
+                             queue_state["queue"].remove(req_id)
+                    st.stop()
 
-            status_text.text("[4/8] Removing live streams...")
-            df = step4.run(df)
-            progress_bar.progress(71)
+                progress_bar.progress(50)
 
-            status_text.text("[5/8] Removing unavailable/deleted videos...")
-            df = step5.run(df)
-            progress_bar.progress(78)
+                status_text.text("[2/8] Merging watch history with metadata...")
+                df = step2.run(history_2025, cache_list)
+                progress_bar.progress(57)
 
-            status_text.text("[6/8] Capping long videos and sorting...")
-            df = step6.run(df)
-            progress_bar.progress(85)
+                status_text.text("[3/8] Deduplicating non-music videos...")
+                df = step3.run(df)
+                progress_bar.progress(64)
 
-            status_text.text("[7/8] Flooring timestamps...")
-            df = step7.run(df)
-            progress_bar.progress(92)
+                status_text.text("[4/8] Removing live streams...")
+                df = step4.run(df)
+                progress_bar.progress(71)
 
-            status_text.text("[8/8] Finishing touches...")
-            df = step8.run(df)
-            progress_bar.progress(100)
+                status_text.text("[5/8] Removing unavailable/deleted videos...")
+                df = step5.run(df)
+                progress_bar.progress(78)
 
-            status_text.text("Processing complete!")
+                status_text.text("[6/8] Capping long videos and sorting...")
+                df = step6.run(df)
+                progress_bar.progress(85)
+
+                status_text.text("[7/8] Flooring timestamps...")
+                df = step7.run(df)
+                progress_bar.progress(92)
+
+                status_text.text("[8/8] Finishing touches...")
+                df = step8.run(df)
+                progress_bar.progress(100)
+
+                status_text.text("Processing complete!")
+            finally:
+                with queue_state["lock"]:
+                    if req_id in queue_state["queue"]:
+                        queue_state["queue"].remove(req_id)
 
             # Store in session state
             st.session_state["processed_data"] = df
