@@ -35,6 +35,24 @@ st.markdown(
 
 uploaded_file = st.file_uploader("Upload watch-history.json", type="json")
 
+if uploaded_file is None:
+    st.markdown(
+        """
+### Prerequisites
+**YouTube watch history**
+1. Request a copy of your YouTube watch history from [Google Takeout](https://takeout.google.com/)
+2. Click on **Deselect all**
+3. Scroll down and select **YouTube and YouTube Music**
+4. Click on **All YouTube data included**
+5. Make sure to only select **history** -> Press **OK**
+6. Click on **Multiple formats** and next to history pick **JSON** -> Press **OK**
+7. Click on **Next step**, leave the next screen as is and click on **Create export**.
+8. You will receive an email shortly letting you know that your Google data is ready to download.
+9. Extract the takeout and get the `watch-history.json`
+"""
+    )
+
+
 if uploaded_file is not None:
     try:
         # Check if data is already processed in session state for this file
@@ -42,6 +60,7 @@ if uploaded_file is not None:
             "processed_data" not in st.session_state
             or st.session_state.get("file_name") != uploaded_file.name
         ):
+            st.text("uploading file visual")
             # Load Steps dynamically using the existing pipeline helper
             step1 = load_step("step1", "1_yt_vid_metadata.py")
             step2 = load_step("step2", "2_merged_data.py")
