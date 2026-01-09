@@ -116,6 +116,13 @@ if uploaded_file is not None:
             )
             progress_bar.progress(40)
             history_2025, cache_list = step1.run(data)
+
+            if not history_2025:
+                status_text.empty()
+                progress_bar.empty()
+                st.error("Your json file didn't have 2025 data.")
+                st.stop()
+
             progress_bar.progress(50)
 
             status_text.text("[2/8] Merging watch history with metadata...")
