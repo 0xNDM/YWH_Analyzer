@@ -1,4 +1,4 @@
-# YouTube Watch History Analysis
+# YouTube Watch History Analyzer
 
 Interactive Streamlit app that turns your Google Takeout `watch-history.json` into a polished analytics dashboard. It fetches fresh metadata from the YouTube Data API v3, processes everything fully in memory, and renders clean, dark-themed Plotly visuals.
 
