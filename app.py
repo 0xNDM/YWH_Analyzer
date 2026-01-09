@@ -8,13 +8,12 @@ from pipeline import load_step
 import visualizations
 import streamlit.components.v1 as components
 
+
 # Queue Management
 @st.cache_resource
 def get_queue():
-    return {
-        "queue": [],
-        "lock": threading.Lock()
-    }
+    return {"queue": [], "lock": threading.Lock()}
+
 
 queue_state = get_queue()
 
@@ -115,16 +114,16 @@ if uploaded_file is not None:
             # ---------------- QUEUE LOGIC ----------------
             if "request_id" not in st.session_state:
                 st.session_state["request_id"] = str(uuid.uuid4())
-            
+
             req_id = st.session_state["request_id"]
-            
+
             # Add to queue if not present
             with queue_state["lock"]:
                 if req_id not in queue_state["queue"]:
                     queue_state["queue"].append(req_id)
-            
+
             queue_placeholder = st.empty()
-            
+
             try:
                 while True:
                     with queue_state["lock"]:
@@ -138,7 +137,9 @@ if uploaded_file is not None:
                         queue_placeholder.empty()
                         break
                     else:
-                        queue_placeholder.warning(f"⚠️ Analysis server busy. JSON loaded. You are in queue position {position} for processing.")
+                        queue_placeholder.warning(
+                            f"⚠️ Analysis server busy. JSON loaded. You are in queue position {position} for processing."
+                        )
                         time.sleep(2)
 
                 upload_status.text("Starting analysis...")
@@ -170,8 +171,8 @@ if uploaded_file is not None:
                     st.error("Your json file didn't have 2025 data.")
                     # Handle queue removal before stopping
                     with queue_state["lock"]:
-                         if req_id in queue_state["queue"]:
-                             queue_state["queue"].remove(req_id)
+                        if req_id in queue_state["queue"]:
+                            queue_state["queue"].remove(req_id)
                     st.stop()
 
                 progress_bar.progress(50)
