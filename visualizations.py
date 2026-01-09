@@ -283,4 +283,10 @@ def create_charts(df):
     )
     figs["dow"] = fig_dow
 
+    # Disable zoom and pan needed for mobile accidental touches
+    for key in figs:
+        figs[key].update_layout(dragmode=False)
+        figs[key].update_xaxes(fixedrange=True)
+        figs[key].update_yaxes(fixedrange=True)
+
     return figs

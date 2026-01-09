@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from pipeline import load_step
 import visualizations
+import streamlit.components.v1 as components
 
 # Page Config
 st.set_page_config(
@@ -26,6 +27,37 @@ st.markdown(
 </style>
 """,
     unsafe_allow_html=True,
+)
+
+# Force a desktop viewport width on mobile devices
+components.html(
+    """
+    <script>
+      try {
+        // Access the parent document (the main Streamlit app)
+        var parentDoc = window.parent.document;
+        
+        // Find existing viewport meta tag
+        var meta = parentDoc.querySelector('meta[name="viewport"]');
+        
+        // Settings to force desktop view (wide width, zoomed out)
+        var content = 'width=1400, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes';
+        
+        if (meta) {
+          meta.setAttribute('content', content);
+        } else {
+          meta = parentDoc.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = content;
+          parentDoc.head.appendChild(meta);
+        }
+        console.log("Viewport overridden to desktop mode");
+      } catch (e) {
+        console.warn("Could not override viewport. This might be due to cross-origin restrictions in the iframe.", e);
+      }
+    </script>
+    """,
+    height=0,
 )
 
 st.title("YouTube Watch History Analysis")
